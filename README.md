@@ -1,6 +1,6 @@
 # Tidal Access Calculator — Langstone Harbour
 
-A browser-based tool for predicting when there is sufficient water to depart and arrive at a drying mooring in the Langstone Harbour, Hampshire.
+A browser-based tool for predicting when there is sufficient water to depart and arrive at a drying mooring in the Broom Channel of Langstone Harbour, Hampshire.
 
 The tool computes access windows by comparing predicted tidal heights against a threshold derived from the mooring's drying height, the vessel's draught, and a configurable safety margin. It displays these windows visually, and can export them as calendar events (.ics) for import into Google Calendar, Outlook, or Apple Calendar.
 

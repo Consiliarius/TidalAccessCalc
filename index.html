@@ -525,9 +525,12 @@
 // STATE
 // ============================================================
 let tidalEvents = [];
+let historicEvents = []; // From historic_data.json, used for observation calibration only
 let observations = [];
 let chartDayIndex = 0;
 let interpolatedDays = []; // [{date, points:[{t,h}]}]
+
+const HISTORIC_DATA_URL = 'https://consiliarius.github.io/TidalAccessCalc/historic_data.json';
 
 // ============================================================
 // SETTINGS PERSISTENCE
@@ -868,26 +871,19 @@ function interpolateCurve() {
   interpolatedDays.sort((a, b) => parseDateKey(a.date) - parseDateKey(b.date));
 }
 
-function getHeightAt(time) {
-  // Find the two bounding events and interpolate
+function _interpolateFromEvents(events, time) {
+  // Interpolate height at the given time from a sorted event array
   const t = time.getTime();
-  if (tidalEvents.length < 2) return null;
+  if (events.length < 2) return null;
+  if (t <= events[0].time.getTime() || t >= events[events.length-1].time.getTime()) return null;
 
-  // Before first or after last event — no valid interpolation
-  if (t <= tidalEvents[0].time.getTime()) {
-    return null;
-  }
-  if (t >= tidalEvents[tidalEvents.length-1].time.getTime()) {
-    return null;
-  }
-
-  for (let i = 0; i < tidalEvents.length - 1; i++) {
-    const t1 = tidalEvents[i].time.getTime();
-    const t2 = tidalEvents[i+1].time.getTime();
+  for (let i = 0; i < events.length - 1; i++) {
+    const t1 = events[i].time.getTime();
+    const t2 = events[i+1].time.getTime();
     if (t >= t1 && t <= t2) {
       const frac = (t - t1) / (t2 - t1);
-      const h1 = tidalEvents[i].height;
-      const h2 = tidalEvents[i+1].height;
+      const h1 = events[i].height;
+      const h2 = events[i+1].height;
       const falling = h1 > h2;
       const p = falling ? 1.37 : 1.11;
       const warpedFrac = Math.pow(frac, p);
@@ -895,6 +891,14 @@ function getHeightAt(time) {
     }
   }
   return null;
+}
+
+function getHeightAt(time) {
+  // Try the actively loaded tidal data first
+  let h = _interpolateFromEvents(tidalEvents, time);
+  if (h !== null) return h;
+  // Fall back to historic data for observation calibration
+  return _interpolateFromEvents(historicEvents, time);
 }
 
 // ============================================================
@@ -964,16 +968,53 @@ function parseCSV(text) {
   }
 
   observations = obs.sort((a, b) => a.time - b.time);
-  showStatus('obsStatus', `Loaded ${observations.length} observations.`, 'ok');
-  calibrateDryingHeight();
-  renderAll();
+  showStatus('obsStatus', `Loaded ${observations.length} observations. Fetching historic tidal data…`, 'info');
+
+  // Fetch historic tidal data for calibration, then calibrate
+  fetchHistoricData().then(() => {
+    calibrateDryingHeight();
+    renderAll();
+  });
+}
+
+// ============================================================
+// HISTORIC TIDAL DATA (for observation calibration)
+// ============================================================
+async function fetchHistoricData() {
+  if (historicEvents.length > 0) return; // Already loaded
+  try {
+    const resp = await fetch(HISTORIC_DATA_URL);
+    if (!resp.ok) {
+      console.warn(`Historic data: HTTP ${resp.status}`);
+      return;
+    }
+    const data = await resp.json();
+    const events = data.events || [];
+    if (events.length === 0) return;
+
+    historicEvents = events.map(e => {
+      let dtStr = e.DateTime;
+      if (dtStr && !dtStr.endsWith('Z') && !dtStr.includes('+') && !dtStr.includes('-', 10)) {
+        dtStr += 'Z';
+      }
+      return {
+        type: e.EventType,
+        time: new Date(dtStr),
+        height: e.Height
+      };
+    }).sort((a, b) => a.time - b.time);
+
+    console.log(`Loaded ${historicEvents.length} historic events`);
+  } catch (err) {
+    console.warn('Could not fetch historic tidal data:', err.message);
+  }
 }
 
 // ============================================================
 // DRYING HEIGHT CALIBRATION
 // ============================================================
 function calibrateDryingHeight() {
-  if (observations.length === 0 || tidalEvents.length === 0) {
+  if (observations.length === 0 || (tidalEvents.length === 0 && historicEvents.length === 0)) {
     updateCalibrationDisplay(null);
     return;
   }
@@ -981,11 +1022,14 @@ function calibrateDryingHeight() {
   const draught = parseFloat(el('draught').value) || 1.0;
   let upperBounds = []; // from afloat observations
   let lowerBounds = []; // from aground observations
+  let matched = 0;
+  let unmatched = 0;
 
   observations.forEach(obs => {
     if (obs.afloat === null) return; // skip uncertain
     const h = getHeightAt(obs.time);
-    if (h === null) return;
+    if (h === null) { unmatched++; return; }
+    matched++;
 
     const impliedDrying = h - draught;
 
@@ -997,6 +1041,17 @@ function calibrateDryingHeight() {
       lowerBounds.push({ value: impliedDrying, time: obs.time, height: h });
     }
   });
+
+  // Update observation status with match info
+  const uncertainCount = observations.filter(o => o.afloat === null).length;
+  let obsMsg = `Loaded ${observations.length} observations`;
+  if (matched > 0 || unmatched > 0) {
+    obsMsg += ` (${matched} matched tidal data`;
+    if (unmatched > 0) obsMsg += `, ${unmatched} outside data range`;
+    if (uncertainCount > 0) obsMsg += `, ${uncertainCount} uncertain`;
+    obsMsg += ')';
+  }
+  showStatus('obsStatus', obsMsg + '.', matched > 0 ? 'ok' : 'warn');
 
   let bestEstimate = parseFloat(el('dryingHeight').value);
   let lower = null, upper = null;

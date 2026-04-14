@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tidal Access — Langstone Harbour</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent-dim: #1f6feb;
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.15);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.15);
+    --yellow: #d29922;
+    --yellow-dim: rgba(210,153,34,0.15);
+    --chart-water: #1a5276;
+    --chart-threshold: #e74c3c;
+    --chart-access: rgba(63,185,80,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.75rem; }
+
+  @media (max-width: 700px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.6rem;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(88,166,255,0.2);
+  }
+
+  button {
+    background: var(--accent-dim);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    padding: 0.5rem 1.2rem;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  button:hover { background: var(--accent); color: #000; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-sm {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+  }
+
+  .status {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+  }
+
+  .status-ok { background: var(--green-dim); color: var(--green); }
+  .status-err { background: var(--red-dim); color: var(--red); }
+  .status-warn { background: var(--yellow-dim); color: var(--yellow); }
+  .status-info { background: rgba(88,166,255,0.1); color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  th {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hw { color: var(--accent); font-weight: 600; }
+  .lw { color: var(--text-dim); }
+
+  canvas {
+    width: 100%;
+    height: 280px;
+    display: block;
+    margin-top: 0.5rem;
+  }
+
+  .access-bar {
+    height: 32px;
+    background: var(--bg);
+    border-radius: 4px;
+    position: relative;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .access-window {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: var(--chart-access);
+    border-left: 2px solid var(--green);
+    border-right: 2px solid var(--green);
+  }
+
+  .access-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.2rem;
+  }
+
+  .cal-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    text-align: center;
+  }
+
+  .cal-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cal-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 0.2rem;
+  }
+
+  .cal-range {
+    font-size: 0.75rem;
+    color: var(--yellow);
+    margin-top: 0.2rem;
+  }
+
+  .obs-row-afloat { color: var(--green); }
+  .obs-row-aground { color: var(--red); }
+  .obs-row-uncertain { color: var(--yellow); }
+
+  .hidden { display: none; }
+
+  .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .file-drop:hover, .file-drop.drag-over {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .disclaimer {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    line-height: 1.6;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: inherit;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .day-header {
+    font-weight: 600;
+    color: var(--accent);
+    padding: 0.5rem 0 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  #chartContainer {
+    position: relative;
+    width: 100%;
+  }
+
+  .chart-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .chart-nav span {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚓ Tidal Access — Langstone Harbour</h1>
+<p class="subtitle">Broom Channel mooring access predictor</p>
+
+<!-- Settings Panel -->
+<div class="panel">
+  <h2>Configuration</h2>
+  <div class="grid-4">
+    <div>
+      <label>Draught (m)</label>
+      <input type="number" id="draught" value="1.0" step="0.1" min="0">
+    </div>
+    <div>
+      <label>Safety Margin (m)</label>
+      <input type="number" id="margin" value="0.3" step="0.1" min="0">
+    </div>
+    <div>
+      <label>Drying Height Estimate (m above CD)</label>
+      <input type="number" id="dryingHeight" value="2.5" step="0.1" min="0">
+    </div>
+    <div>
+      <label>Min. Window (minutes)</label>
+      <input type="number" id="minWindow" value="30" step="5" min="0" max="120">
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top:0.75rem">
+    <div>
+      <label>Display Timezone</label>
+      <select id="timezone">
+        <option value="UTC">UTC</option>
+        <option value="BST" selected>BST (UTC+1)</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:0.5rem">
+      <button onclick="saveSettings()" class="btn-sm" style="background:transparent;border-color:var(--border)">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tidal Data Loading -->
+<div class="panel">
+  <h2>Tidal Data</h2>
+  <div class="tabs" id="sourceTabs">
+    <button class="tab active" onclick="showSourceTab('json')">UKHO / JSON File</button>
+    <button class="tab" onclick="showSourceTab('khm')">Royal Navy KHM (30d)</button>
+    <button class="tab" onclick="showSourceTab('manual')">Manual Entry</button>
+  </div>
+
+  <!-- JSON File Source -->
+  <div id="src-json">
+    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.75rem">
+      Load from <code>fetch_tides.py</code>. Supports UKHO API (7 days) and harmonic predictions (year).
+    </p>
+    <div style="display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div class="file-drop" id="tidalFileDrop" onclick="document.getElementById('tidalFile').click()" style="padding:1rem">
+          Drop tidal_data.json here or click to upload
+          <input type="file" id="tidalFile" accept=".json" style="display:none" onchange="handleTidalFile(event)">
+        </div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:0.5rem">
+        <button class="btn-sm" onclick="document.getElementById('tidalPasteArea').classList.toggle('hidden')" style="background:transparent;border-color:var(--border)">Paste JSON instead</button>
+      </div>
+    </div>
+    <div id="tidalPasteArea" class="hidden" style="margin-top:0.75rem">
+      <textarea id="tidalJsonText" style="width:100%;height:120px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.8rem;padding:0.5rem" placeholder="Paste the contents of tidal_data.json or raw API response here"></textarea>
+      <button class="btn-sm" onclick="loadPastedTidalJson()" style="margin-top:0.5rem">Load Data</button>
+    </div>
+  </div>
+
+  <!-- KHM Paste Source -->
+  <div id="src-khm" class="hidden">
+    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.5rem">
+      Paste the tide table from
+      <a href="https://www.royalnavy.mod.uk/khm/portsmouth/port-information/tide-tables" target="_blank" style="color:var(--accent)">Royal Navy KHM Portsmouth</a>.
+      Select the table rows and paste below. Tab-separated, 13 columns.
+    </p>
+    <div class="grid-2" style="margin-bottom:0.5rem">
+      <div>
+        <label>Data timezone</label>
+        <select id="khmTimezone">
+          <option value="BST" selected>BST (UTC+1) — default for KHM</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+      <div>
+        <label>Year (if not in dates)</label>
+        <input type="number" id="khmYear" value="2026" min="2024" max="2030" style="width:100px">
+      </div>
+    </div>
+    <textarea id="khmText" style="width:100%;height:180px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.78rem;padding:0.5rem;tab-size:8" placeholder="14/04	06:12	10:10	4	03:16	1.6	22:38	4.3	15:30	1.3	19:58	2.7	40%
+15/04	06:10	..."></textarea>
+    <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center">
+      <button onclick="parseKHM()">Load KHM Data</button>
+      <span style="font-size:0.75rem;color:var(--text-dim)">Format: Date, Sunrise, HW₁ time, HW₁ ht, LW₁ time, LW₁ ht, HW₂ time, HW₂ ht, LW₂ time, LW₂ ht, Sunset, Range, Spring%</span>
+    </div>
+  </div>
+
+  <!-- Manual Entry Source -->
+  <div id="src-manual" class="hidden">
+    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.5rem">
+      Type or paste tidal events from any source (Reeds, Admiralty Tide Tables, etc.). One event per line.
+    </p>
+    <div style="margin-bottom:0.5rem">
+      <label>Data timezone</label>
+      <select id="manualTimezone" style="width:auto">
+        <option value="UTC">UTC</option>
+        <option value="BST" selected>BST (UTC+1)</option>
+      </select>
+    </div>
+    <textarea id="manualText" style="width:100%;height:180px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.78rem;padding:0.5rem" placeholder="14/04 03:16 LW 1.6
+14/04 10:10 HW 4.0
+14/04 15:30 LW 1.3
+14/04 22:38 HW 4.3
+15/04 04:05 LW 1.8
+..."></textarea>
+    <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center">
+      <button onclick="parseManualEntry()">Load Events</button>
+      <span style="font-size:0.75rem;color:var(--text-dim)">Format: DD/MM HH:MM HW|LW height — one per line</span>
+    </div>
+  </div>
+
+  <div id="fetchStatus"></div>
+</div>
+
+<!-- Calibration Summary -->
+<div class="panel" id="calibrationPanel">
+  <h2>Mooring Calibration</h2>
+  <div class="grid-4">
+    <div class="cal-card">
+      <div class="cal-value" id="calDrying">2.5</div>
+      <div class="cal-label">Drying Height (m)</div>
+      <div class="cal-range" id="calRange">No observations yet</div>
+    </div>
+    <div class="cal-card">
+      <div class="cal-value" id="calThreshold">3.8</div>
+      <div class="cal-label">Access Threshold (m)</div>
+      <div class="cal-range">Drying + draught + margin</div>
+    </div>
+    <div class="cal-card">
+      <div class="cal-value" id="calObs">0</div>
+      <div class="cal-label">Observations</div>
+      <div class="cal-range" id="calObsDetail">—</div>
+    </div>
+    <div class="cal-card">
+      <div class="cal-value" id="calConfidence">—</div>
+      <div class="cal-label">Confidence</div>
+      <div class="cal-range" id="calConfDetail">Need observations</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tidal Events & Access Windows -->
+<div class="panel" id="dataPanel">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('access')">Access Windows</button>
+    <button class="tab" onclick="showTab('chart')">Tidal Curve</button>
+    <button class="tab" onclick="showTab('events')">Tidal Events</button>
+    <button class="tab" onclick="showTab('observations')">Observations</button>
+  </div>
+
+  <!-- Access Windows Tab -->
+  <div id="tab-access">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem">
+      <button class="btn-sm" id="icsExportBtn" onclick="exportICS()" style="display:none">Export .ics Calendar</button>
+    </div>
+    <div id="accessWindows">
+      <p style="color:var(--text-dim);font-size:0.85rem">Load tidal data to see access windows.</p>
+    </div>
+  </div>
+
+  <!-- Chart Tab -->
+  <div id="tab-chart" class="hidden">
+    <div class="chart-nav">
+      <button class="btn-sm" onclick="chartPrev()">← Prev</button>
+      <span id="chartDateLabel">—</span>
+      <button class="btn-sm" onclick="chartNext()">Next →</button>
+    </div>
+    <div id="chartContainer">
+      <canvas id="tidalChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Events Tab -->
+  <div id="tab-events" class="hidden">
+    <div id="eventsTable">
+      <p style="color:var(--text-dim);font-size:0.85rem">No data loaded.</p>
+    </div>
+  </div>
+
+  <!-- Observations Tab -->
+  <div id="tab-observations" class="hidden">
+    <div class="file-drop" id="fileDrop" onclick="document.getElementById('csvFile').click()">
+      Drop CSV here or click to upload observation log
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSV(event)">
+    </div>
+    <div style="margin-top:0.5rem;text-align:center">
+      <button class="btn-sm" onclick="document.getElementById('jsonPaste').classList.toggle('hidden')" style="background:transparent;border-color:var(--border)">Or paste CSV text</button>
+    </div>
+    <div id="jsonPaste" class="hidden" style="margin-top:0.5rem">
+      <textarea id="csvText" style="width:100%;height:120px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.8rem;padding:0.5rem" placeholder="Paste CSV content here (Date,Time (BST),Wind Direction,Afloat?,Notes)"></textarea>
+      <button class="btn-sm" onclick="parseCSVText()" style="margin-top:0.5rem">Load Observations</button>
+    </div>
+    <div id="obsStatus" style="margin-top:0.5rem"></div>
+    <div id="obsTable" style="margin-top:0.75rem"></div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  <strong>Safety Notice:</strong> This tool provides estimates only, based on UKHO predicted tidal heights and a modelled
+  drying height. It does not account for meteorological effects (storm surge, barometric pressure, prolonged wind),
+  silting changes, or unusual tidal conditions. Predictions are not suitable for navigation. Always verify
+  conditions visually before departing or arriving. Heights are relative to Chart Datum.
+  Tidal data: © UK Hydrographic Office. Contains Crown copyright material.
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let tidalEvents = [];
+let observations = [];
+let chartDayIndex = 0;
+let interpolatedDays = []; // [{date, points:[{t,h}]}]
+
+// ============================================================
+// SETTINGS PERSISTENCE
+// ============================================================
+function saveSettings() {
+  const s = {
+    draught: el('draught').value,
+    margin: el('margin').value,
+    dryingHeight: el('dryingHeight').value,
+    timezone: el('timezone').value,
+    minWindow: el('minWindow').value
+  };
+  localStorage.setItem('tidalAccess', JSON.stringify(s));
+  showStatus('fetchStatus', 'Settings saved to browser storage.', 'info');
+}
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('tidalAccess'));
+    if (!s) return;
+    if (s.draught) el('draught').value = s.draught;
+    if (s.margin) el('margin').value = s.margin;
+    if (s.dryingHeight) el('dryingHeight').value = s.dryingHeight;
+    if (s.timezone) el('timezone').value = s.timezone;
+    if (s.minWindow) el('minWindow').value = s.minWindow;
+  } catch(e) {}
+}
+
+// ============================================================
+// TIDAL DATA LOADING (file-based)
+// ============================================================
+function handleTidalFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      loadTidalJson(data);
+    } catch(err) {
+      showStatus('fetchStatus', `Invalid JSON file: ${err.message}`, 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function loadPastedTidalJson() {
+  try {
+    const data = JSON.parse(el('tidalJsonText').value);
+    loadTidalJson(data);
+    el('tidalPasteArea').classList.add('hidden');
+  } catch(err) {
+    showStatus('fetchStatus', `Invalid JSON: ${err.message}`, 'err');
+  }
+}
+
+function loadTidalJson(data) {
+  // Handle both fetch_tides.py format (object with events) and raw API response (array)
+  let events;
+  let stationName = '';
+  let fetchedAt = '';
+
+  if (Array.isArray(data)) {
+    events = data;
+  } else if (data.events && Array.isArray(data.events)) {
+    events = data.events;
+    stationName = data.stationName || '';
+    fetchedAt = data.fetchedAt || '';
+  } else {
+    showStatus('fetchStatus', 'Unrecognised JSON format. Expected an array of tidal events or a fetch_tides.py output file.', 'err');
+    return;
+  }
+
+  processTidalEvents(events);
+
+  let msg = `Loaded ${events.length} tidal events`;
+  if (stationName) msg += ` for ${stationName}`;
+  if (fetchedAt) {
+    const d = new Date(fetchedAt);
+    if (!isNaN(d.getTime())) msg += ` (fetched ${d.toLocaleDateString()})`;
+  }
+  showStatus('fetchStatus', msg + '.', 'ok');
+}
+
+// ============================================================
+// KHM PASTE PARSER
+// ============================================================
+function parseKHM() {
+  const text = el('khmText').value.trim();
+  if (!text) { showStatus('fetchStatus', 'Paste KHM table data first.', 'err'); return; }
+
+  const isBST = el('khmTimezone').value === 'BST';
+  const year = parseInt(el('khmYear').value) || 2026;
+  const tzOffsetMs = isBST ? 3600000 : 0;
+
+  const lines = text.split('\n').filter(l => l.trim());
+  const events = [];
+  let parseErrors = 0;
+
+  lines.forEach((line, lineIdx) => {
+    // Split by tab (primary) or multiple spaces
+    const parts = line.includes('\t')
+      ? line.split('\t').map(s => s.trim())
+      : line.split(/\s{2,}/).map(s => s.trim());
+
+    if (parts.length < 10) {
+      parseErrors++;
+      return;
+    }
+
+    // Column 0: Date (DD/MM or DD/MM/YYYY)
+    const dateParts = parts[0].split('/');
+    const day = parseInt(dateParts[0]);
+    const month = parseInt(dateParts[1]);
+    const yr = dateParts.length > 2 ? parseInt(dateParts[2]) : year;
+    if (isNaN(day) || isNaN(month)) { parseErrors++; return; }
+
+    // Columns 2-9: HW1 time, HW1 ht, LW1 time, LW1 ht, HW2 time, HW2 ht, LW2 time, LW2 ht
+    const pairs = [
+      { timeStr: parts[2], htStr: parts[3], type: 'HighWater' },
+      { timeStr: parts[4], htStr: parts[5], type: 'LowWater' },
+      { timeStr: parts[6], htStr: parts[7], type: 'HighWater' },
+      { timeStr: parts[8], htStr: parts[9], type: 'LowWater' }
+    ];
+
+    pairs.forEach(p => {
+      if (!p.timeStr || !p.htStr || p.timeStr === '-' || p.htStr === '-') return;
+      const timeParts = p.timeStr.split(':');
+      if (timeParts.length < 2) return;
+      const hr = parseInt(timeParts[0]);
+      const mn = parseInt(timeParts[1]);
+      const ht = parseFloat(p.htStr);
+      if (isNaN(hr) || isNaN(mn) || isNaN(ht)) return;
+
+      // Build UTC datetime
+      const dt = new Date(Date.UTC(yr, month - 1, day, hr, mn, 0));
+      const utcDt = new Date(dt.getTime() - tzOffsetMs);
+
+      events.push({
+        EventType: p.type,
+        DateTime: utcDt.toISOString(),
+        Height: ht,
+        IsApproximateTime: false,
+        IsApproximateHeight: false,
+        Filtered: false
+      });
+    });
+  });
+
+  if (events.length === 0) {
+    showStatus('fetchStatus', `Could not parse any events. Check the format. (${parseErrors} lines skipped)`, 'err');
+    return;
+  }
+
+  processTidalEvents(events);
+  const days = new Set(events.map(e => e.DateTime.substring(0, 10))).size;
+  let msg = `KHM: Loaded ${events.length} events over ${days} days`;
+  if (parseErrors > 0) msg += ` (${parseErrors} lines skipped)`;
+  showStatus('fetchStatus', msg + '.', 'ok');
+}
+
+// ============================================================
+// MANUAL ENTRY PARSER
+// ============================================================
+function parseManualEntry() {
+  const text = el('manualText').value.trim();
+  if (!text) { showStatus('fetchStatus', 'Enter tidal events first.', 'err'); return; }
+
+  const isBST = el('manualTimezone').value === 'BST';
+  const tzOffsetMs = isBST ? 3600000 : 0;
+  const now = new Date();
+  const defaultYear = now.getUTCFullYear();
+
+  const lines = text.split('\n').filter(l => l.trim());
+  const events = [];
+  let parseErrors = 0;
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#')) return; // skip comments
+
+    // Expected: DD/MM HH:MM HW|LW height
+    // Also accept: DD/MM/YYYY HH:MM HW|LW height
+    const match = line.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})\s+(HW|LW|H|L)\s+([\d.]+)/i);
+    if (!match) { parseErrors++; return; }
+
+    const day = parseInt(match[1]);
+    const month = parseInt(match[2]);
+    let year = match[3] ? parseInt(match[3]) : defaultYear;
+    if (year < 100) year += 2000;
+    const hr = parseInt(match[4]);
+    const mn = parseInt(match[5]);
+    const typeRaw = match[6].toUpperCase();
+    const ht = parseFloat(match[7]);
+
+    const type = (typeRaw === 'HW' || typeRaw === 'H') ? 'HighWater' : 'LowWater';
+
+    const dt = new Date(Date.UTC(year, month - 1, day, hr, mn, 0));
+    const utcDt = new Date(dt.getTime() - tzOffsetMs);
+
+    events.push({
+      EventType: type,
+      DateTime: utcDt.toISOString(),
+      Height: ht,
+      IsApproximateTime: false,
+      IsApproximateHeight: false,
+      Filtered: false
+    });
+  });
+
+  if (events.length === 0) {
+    showStatus('fetchStatus', `Could not parse any events. Expected: DD/MM HH:MM HW|LW height (${parseErrors} lines failed)`, 'err');
+    return;
+  }
+
+  processTidalEvents(events);
+  const days = new Set(events.map(e => e.DateTime.substring(0, 10))).size;
+  let msg = `Manual: Loaded ${events.length} events over ${days} days`;
+  if (parseErrors > 0) msg += ` (${parseErrors} lines skipped)`;
+  showStatus('fetchStatus', msg + '.', 'ok');
+}
+
+// ============================================================
+// SOURCE TAB SWITCHING
+// ============================================================
+function showSourceTab(name) {
+  ['json', 'khm', 'manual'].forEach(t => {
+    const panel = document.getElementById(`src-${t}`);
+    if (panel) panel.classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('#sourceTabs .tab').forEach(btn => {
+    const isActive = (name === 'json' && btn.textContent.includes('JSON')) ||
+                     (name === 'khm' && btn.textContent.includes('KHM')) ||
+                     (name === 'manual' && btn.textContent.includes('Manual'));
+    btn.classList.toggle('active', isActive);
+  });
+}
+
+// ============================================================
+// TIDAL EVENT PROCESSING
+// ============================================================
+function processTidalEvents(data) {
+  tidalEvents = data.map(e => ({
+    type: e.EventType,
+    time: new Date(e.DateTime),
+    height: e.Height,
+    isApproxTime: e.IsApproximateTime,
+    isApproxHeight: e.IsApproximateHeight,
+    filtered: e.Filtered
+  })).sort((a, b) => a.time - b.time);
+
+  interpolateCurve();
+  renderAll();
+}
+
+// ============================================================
+// TIDAL CURVE INTERPOLATION
+// ============================================================
+function interpolateCurve() {
+  if (tidalEvents.length < 2) return;
+  interpolatedDays = [];
+
+  // Generate points every 5 minutes across the full span
+  const allPoints = [];
+  for (let i = 0; i < tidalEvents.length - 1; i++) {
+    const e1 = tidalEvents[i];
+    const e2 = tidalEvents[i + 1];
+    const t1 = e1.time.getTime();
+    const t2 = e2.time.getTime();
+    const h1 = e1.height;
+    const h2 = e2.height;
+    const dur = t2 - t1;
+
+    // Power-cosine interpolation between events.
+    // p > 1 delays the transition, capturing the HW stand on the fall
+    // and the mid-rise shoulder. Calibrated against EasyTide Langstone data.
+    const falling = h1 > h2;
+    const p = falling ? 1.37 : 1.11;
+    const step = 5 * 60 * 1000; // 5 minutes
+    for (let t = t1; t < t2; t += step) {
+      const frac = (t - t1) / dur;
+      const warpedFrac = Math.pow(frac, p);
+      const h = h1 + (h2 - h1) * (1 - Math.cos(Math.PI * warpedFrac)) / 2;
+      allPoints.push({ t: new Date(t), h });
+    }
+  }
+  // Add final event
+  const last = tidalEvents[tidalEvents.length - 1];
+  allPoints.push({ t: last.time, h: last.height });
+
+  // Group by date (in display timezone)
+  const grouped = {};
+  allPoints.forEach(p => {
+    const dk = dateKey(p.t);
+    if (!grouped[dk]) grouped[dk] = [];
+    grouped[dk].push(p);
+  });
+
+  interpolatedDays = Object.keys(grouped).map(dk => ({
+    date: dk,
+    points: grouped[dk]
+  }));
+  interpolatedDays.sort((a, b) => parseDateKey(a.date) - parseDateKey(b.date));
+}
+
+function getHeightAt(time) {
+  // Find the two bounding events and interpolate
+  const t = time.getTime();
+  if (tidalEvents.length < 2) return null;
+
+  // Before first or after last event — no valid interpolation
+  if (t <= tidalEvents[0].time.getTime()) {
+    return null;
+  }
+  if (t >= tidalEvents[tidalEvents.length-1].time.getTime()) {
+    return null;
+  }
+
+  for (let i = 0; i < tidalEvents.length - 1; i++) {
+    const t1 = tidalEvents[i].time.getTime();
+    const t2 = tidalEvents[i+1].time.getTime();
+    if (t >= t1 && t <= t2) {
+      const frac = (t - t1) / (t2 - t1);
+      const h1 = tidalEvents[i].height;
+      const h2 = tidalEvents[i+1].height;
+      const falling = h1 > h2;
+      const p = falling ? 1.37 : 1.11;
+      const warpedFrac = Math.pow(frac, p);
+      return h1 + (h2 - h1) * (1 - Math.cos(Math.PI * warpedFrac)) / 2;
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// OBSERVATION HANDLING
+// ============================================================
+function handleCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    parseCSV(e.target.result);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVText() {
+  parseCSV(el('csvText').value);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) {
+    showStatus('obsStatus', 'CSV appears empty.', 'err');
+    return;
+  }
+
+  // Detect header
+  const header = lines[0].toLowerCase();
+  const hasHeader = header.includes('date') || header.includes('time') || header.includes('afloat');
+  const startIdx = hasHeader ? 1 : 0;
+
+  const obs = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Handle both comma and tab separation
+    const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+    if (parts.length < 4) continue;
+
+    const dateStr = parts[0].trim();
+    const timeStr = parts[1].trim();
+    const wind = parts[2].trim();
+    const afloatRaw = parts[3].trim().toLowerCase();
+    const notes = parts.length > 4 ? parts.slice(4).join(',').trim() : '';
+
+    // Parse date — handle DD/MM/YYYY and YYYY-MM-DD
+    // Observation times are recorded in BST; convert to UTC (subtract 1 hour)
+    let dt;
+    if (dateStr.includes('/')) {
+      const [d, m, y] = dateStr.split('/');
+      dt = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${timeStr}:00Z`);
+    } else {
+      dt = new Date(`${dateStr}T${timeStr}:00Z`);
+    }
+    // BST → UTC
+    dt = new Date(dt.getTime() - 3600000);
+
+    if (isNaN(dt.getTime())) continue;
+
+    let afloat = null;
+    if (afloatRaw === 'yes' || afloatRaw === 'y' || afloatRaw === 'true') afloat = true;
+    else if (afloatRaw === 'no' || afloatRaw === 'n' || afloatRaw === 'false') afloat = false;
+    // 'uncertain' remains null
+
+    obs.push({ time: dt, wind, afloat, notes });
+  }
+
+  observations = obs.sort((a, b) => a.time - b.time);
+  showStatus('obsStatus', `Loaded ${observations.length} observations.`, 'ok');
+  calibrateDryingHeight();
+  renderAll();
+}
+
+// ============================================================
+// DRYING HEIGHT CALIBRATION
+// ============================================================
+function calibrateDryingHeight() {
+  if (observations.length === 0 || tidalEvents.length === 0) {
+    updateCalibrationDisplay(null);
+    return;
+  }
+
+  const draught = parseFloat(el('draught').value) || 1.0;
+  let upperBounds = []; // from afloat observations
+  let lowerBounds = []; // from aground observations
+
+  observations.forEach(obs => {
+    if (obs.afloat === null) return; // skip uncertain
+    const h = getHeightAt(obs.time);
+    if (h === null) return;
+
+    const impliedDrying = h - draught;
+
+    if (obs.afloat) {
+      // Boat is afloat, so actual drying height <= impliedDrying
+      upperBounds.push({ value: impliedDrying, time: obs.time, height: h });
+    } else {
+      // Boat is aground, so actual drying height > impliedDrying
+      lowerBounds.push({ value: impliedDrying, time: obs.time, height: h });
+    }
+  });
+
+  let bestEstimate = parseFloat(el('dryingHeight').value);
+  let lower = null, upper = null;
+  let confidence = 'none';
+
+  if (lowerBounds.length > 0) {
+    lower = Math.max(...lowerBounds.map(b => b.value));
+  }
+  if (upperBounds.length > 0) {
+    upper = Math.min(...upperBounds.map(b => b.value));
+  }
+
+  if (lower !== null && upper !== null) {
+    if (lower < upper) {
+      bestEstimate = (lower + upper) / 2;
+      const range = upper - lower;
+      confidence = range < 0.2 ? 'high' : range < 0.5 ? 'medium' : 'low';
+    } else {
+      // Bounds are inconsistent — flag this
+      bestEstimate = (lower + upper) / 2;
+      confidence = 'inconsistent';
+    }
+  } else if (lower !== null) {
+    bestEstimate = lower + 0.15; // slight offset above lower bound
+    confidence = 'partial-low';
+  } else if (upper !== null) {
+    bestEstimate = upper - 0.15;
+    confidence = 'partial-high';
+  }
+
+  el('dryingHeight').value = bestEstimate.toFixed(2);
+  updateCalibrationDisplay({ bestEstimate, lower, upper, confidence, upperBounds, lowerBounds });
+
+  // Recompute access windows with new estimate
+  renderAccessWindows();
+  if (!document.getElementById('tab-chart').classList.contains('hidden')) {
+    renderChart();
+  }
+}
+
+function updateCalibrationDisplay(cal) {
+  const draught = parseFloat(el('draught').value) || 1.0;
+  const margin = parseFloat(el('margin').value) || 0.3;
+  const drying = parseFloat(el('dryingHeight').value) || 2.5;
+  const threshold = drying + draught + margin;
+
+  el('calDrying').textContent = drying.toFixed(2);
+  el('calThreshold').textContent = threshold.toFixed(2);
+  el('calObs').textContent = observations.length;
+
+  if (!cal) {
+    el('calRange').textContent = 'Manual estimate';
+    el('calObsDetail').textContent = '—';
+    el('calConfidence').textContent = '—';
+    el('calConfDetail').textContent = 'Need observations';
+    return;
+  }
+
+  const afloatN = cal.upperBounds.length;
+  const agroundN = cal.lowerBounds.length;
+  el('calObsDetail').textContent = `${afloatN} afloat, ${agroundN} aground`;
+
+  if (cal.lower !== null && cal.upper !== null) {
+    el('calRange').textContent = `${cal.lower.toFixed(2)} – ${cal.upper.toFixed(2)}m`;
+  } else if (cal.lower !== null) {
+    el('calRange').textContent = `> ${cal.lower.toFixed(2)}m`;
+  } else if (cal.upper !== null) {
+    el('calRange').textContent = `< ${cal.upper.toFixed(2)}m`;
+  }
+
+  const confLabels = {
+    'high': '●●●', 'medium': '●●○', 'low': '●○○',
+    'partial-low': '●○○', 'partial-high': '●○○',
+    'inconsistent': '⚠', 'none': '—'
+  };
+  const confDesc = {
+    'high': 'Bounds < 0.2m apart',
+    'medium': 'Bounds < 0.5m apart',
+    'low': 'Bounds > 0.5m apart',
+    'partial-low': 'Only aground data',
+    'partial-high': 'Only afloat data',
+    'inconsistent': 'Bounds conflict!',
+    'none': 'Need observations'
+  };
+  el('calConfidence').textContent = confLabels[cal.confidence];
+  el('calConfDetail').textContent = confDesc[cal.confidence];
+}
+
+// ============================================================
+// ACCESS WINDOW COMPUTATION
+// ============================================================
+function computeAccessWindows() {
+  // Compute continuous access windows across the ENTIRE time span,
+  // without splitting at day boundaries.
+  if (interpolatedDays.length === 0) return { flat: [], byDay: [] };
+
+  const threshold = getThreshold();
+
+  // Flatten all points across all days, in chronological order
+  const allPoints = [];
+  interpolatedDays.forEach(day => {
+    day.points.forEach(p => allPoints.push(p));
+  });
+  allPoints.sort((a, b) => a.t - b.t);
+
+  // Find continuous windows where height >= threshold
+  const flat = [];
+  let inWindow = false;
+  let windowStart = null;
+
+  allPoints.forEach(p => {
+    if (p.h >= threshold && !inWindow) {
+      inWindow = true;
+      windowStart = p.t;
+    } else if (p.h < threshold && inWindow) {
+      inWindow = false;
+      flat.push({ start: windowStart, end: p.t });
+    }
+  });
+  if (inWindow) {
+    flat.push({ start: windowStart, end: allPoints[allPoints.length - 1].t });
+  }
+
+  // Filter out windows shorter than the minimum useful duration
+  const minMins = parseFloat(el('minWindow').value) || 0;
+  const filtered = minMins > 0
+    ? flat.filter(w => (w.end - w.start) / 60000 >= minMins)
+    : flat;
+
+  // Group by day for display — windows crossing midnight appear on both days
+  const daySet = new Set(interpolatedDays.map(d => d.date));
+  const byDay = [];
+
+  daySet.forEach(dk => {
+    const dayStart = parseDateKey(dk);
+    const dayEnd = new Date(dayStart.getTime() + 86400000);
+    const dayWindows = [];
+
+    filtered.forEach(w => {
+      // Does this window overlap with this day?
+      if (w.start < dayEnd && w.end > dayStart) {
+        dayWindows.push({
+          // Clamp to day boundaries for the visual bar
+          barStart: new Date(Math.max(w.start.getTime(), dayStart.getTime())),
+          barEnd: new Date(Math.min(w.end.getTime(), dayEnd.getTime())),
+          // Full window times for labels
+          fullStart: w.start,
+          fullEnd: w.end,
+          crossesMidnight: w.start < dayStart || w.end > dayEnd
+        });
+      }
+    });
+
+    byDay.push({ date: dk, windows: dayWindows });
+  });
+
+  byDay.sort((a, b) => parseDateKey(a.date) - parseDateKey(b.date));
+
+  return { flat: filtered, byDay };
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function renderAll() {
+  renderEvents();
+  renderAccessWindows();
+  renderObservations();
+  updateCalibrationDisplay(null);
+  calibrateDryingHeight();
+  if (!document.getElementById('tab-chart').classList.contains('hidden')) {
+    renderChart();
+  }
+}
+
+function renderEvents() {
+  if (tidalEvents.length === 0) {
+    el('eventsTable').innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">No data loaded.</p>';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Height (m)</th></tr></thead><tbody>';
+
+  let prevDate = '';
+  tidalEvents.forEach(e => {
+    const dk = dateKey(e.time);
+    if (dk !== prevDate) {
+      html += `<tr><td colspan="4" class="day-header">${formatDateLong(e.time)}</td></tr>`;
+      prevDate = dk;
+    }
+    const cls = e.type === 'HighWater' ? 'hw' : 'lw';
+    const label = e.type === 'HighWater' ? 'HW' : 'LW';
+    html += `<tr class="${cls}"><td></td><td>${formatTime(e.time)}</td><td>${label}</td><td>${e.height !== null ? e.height.toFixed(2) : '—'}</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  el('eventsTable').innerHTML = html;
+}
+
+function renderAccessWindows() {
+  const aw = computeAccessWindows();
+  if (aw.byDay.length === 0) {
+    el('accessWindows').innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">Load tidal data to see access windows.</p>';
+    el('icsExportBtn').style.display = 'none';
+    return;
+  }
+
+  // Show export button if any windows exist
+  const hasWindows = aw.flat.length > 0;
+  el('icsExportBtn').style.display = hasWindows ? 'inline-block' : 'none';
+
+  const threshold = getThreshold();
+  let html = `<p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem">Access threshold: <strong style="color:var(--accent)">${threshold.toFixed(2)}m</strong> above Chart Datum (drying ${parseFloat(el('dryingHeight').value).toFixed(2)} + draught ${parseFloat(el('draught').value).toFixed(1)} + margin ${parseFloat(el('margin').value).toFixed(1)})</p>`;
+
+  aw.byDay.forEach(day => {
+    const dateLabel = day.date;
+    // Total minutes of access within THIS day only (bar-clamped)
+    const totalMins = day.windows.reduce((sum, w) => sum + (w.barEnd - w.barStart) / 60000, 0);
+    const hoursLabel = totalMins > 0 ? `${Math.floor(totalMins/60)}h${Math.round(totalMins%60).toString().padStart(2,'0')}m` : 'No access';
+
+    html += `<div class="access-label"><span>${dateLabel}</span><span style="color:${totalMins > 0 ? 'var(--green)' : 'var(--red)'}">${hoursLabel}</span></div>`;
+    html += '<div class="access-bar">';
+
+    day.windows.forEach(w => {
+      const dayStart = parseDateKey(day.date);
+      const left = ((w.barStart - dayStart) / 86400000) * 100;
+      const width = ((w.barEnd - w.barStart) / 86400000) * 100;
+      const startLabel = formatTime(w.fullStart);
+      const endLabel = formatTime(w.fullEnd);
+      html += `<div class="access-window" style="left:${Math.max(0,left)}%;width:${Math.min(100-Math.max(0,left),width)}%" title="${startLabel} – ${endLabel}"></div>`;
+    });
+
+    html += '</div>';
+
+    if (day.windows.length > 0) {
+      const details = day.windows.map(w => {
+        const s = formatTime(w.fullStart);
+        const e = formatTime(w.fullEnd);
+        const suffix = w.crossesMidnight ? ' ↗' : '';
+        return `${s} – ${e}${suffix}`;
+      }).join(' · ');
+      html += `<p style="font-size:0.75rem;color:var(--text-dim);margin-bottom:0.75rem;margin-top:-0.3rem">${details}</p>`;
+    } else {
+      html += '<p style="font-size:0.75rem;color:var(--red);margin-bottom:0.75rem;margin-top:-0.3rem">Insufficient water</p>';
+    }
+  });
+
+  el('accessWindows').innerHTML = html;
+}
+
+function renderObservations() {
+  if (observations.length === 0) {
+    el('obsTable').innerHTML = '';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>Date/Time</th><th>Wind</th><th>Afloat</th><th>Pred. Height</th><th>Notes</th></tr></thead><tbody>';
+
+  observations.forEach(obs => {
+    const cls = obs.afloat === true ? 'obs-row-afloat' : obs.afloat === false ? 'obs-row-aground' : 'obs-row-uncertain';
+    const afloatLabel = obs.afloat === true ? '✓ Yes' : obs.afloat === false ? '✗ No' : '? Uncertain';
+    const h = getHeightAt(obs.time);
+    const hLabel = h !== null ? h.toFixed(2) + 'm' : '—';
+
+    html += `<tr class="${cls}">`;
+    html += `<td>${formatDateShort(obs.time)} ${formatTime(obs.time)}</td>`;
+    html += `<td>${obs.wind || '—'}</td>`;
+    html += `<td>${afloatLabel}</td>`;
+    html += `<td>${hLabel}</td>`;
+    html += `<td style="font-size:0.75rem">${obs.notes || ''}</td>`;
+    html += `</tr>`;
+  });
+
+  html += '</tbody></table>';
+  el('obsTable').innerHTML = html;
+}
+
+// ============================================================
+// TIDAL CURVE CHART (Canvas)
+// ============================================================
+function renderChart() {
+  if (interpolatedDays.length === 0) return;
+  if (chartDayIndex >= interpolatedDays.length) chartDayIndex = 0;
+
+  const day = interpolatedDays[chartDayIndex];
+  el('chartDateLabel').textContent = day.date;
+
+  const canvas = el('tidalChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const points = day.points;
+  if (points.length === 0) return;
+
+  // Determine Y range
+  const allH = points.map(p => p.h);
+  const minH = Math.floor(Math.min(...allH, 0));
+  const maxH = Math.ceil(Math.max(...allH) + 0.5);
+
+  // X range: full day
+  const dayStart = parseDateKey(day.date);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+
+  const pad = { top: 20, right: 20, bottom: 35, left: 50 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  function xPos(t) { return pad.left + ((t - dayStart) / (dayEnd - dayStart)) * cW; }
+  function yPos(h) { return pad.top + cH - ((h - minH) / (maxH - minH)) * cH; }
+
+  // Draw threshold zone
+  const threshold = getThreshold();
+  if (threshold >= minH && threshold <= maxH) {
+    // Fill below threshold
+    ctx.fillStyle = 'rgba(248,81,73,0.06)';
+    ctx.fillRect(pad.left, yPos(threshold), cW, yPos(minH) - yPos(threshold));
+  }
+
+  // Draw access zones (green fill above threshold)
+  ctx.fillStyle = 'rgba(63,185,80,0.12)';
+  let inAccess = false;
+  let accessStartX = 0;
+  points.forEach((p, i) => {
+    const x = xPos(p.t);
+    if (p.h >= threshold && !inAccess) {
+      inAccess = true;
+      accessStartX = x;
+    } else if ((p.h < threshold || i === points.length - 1) && inAccess) {
+      inAccess = false;
+      ctx.fillRect(accessStartX, pad.top, x - accessStartX, cH);
+    }
+  });
+
+  // Grid lines
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 0.5;
+  for (let h = minH; h <= maxH; h += 1) {
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yPos(h));
+    ctx.lineTo(W - pad.right, yPos(h));
+    ctx.stroke();
+  }
+
+  // Hour markers
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  for (let hr = 0; hr <= 24; hr += 3) {
+    const t = new Date(dayStart.getTime() + hr * 3600000);
+    const x = xPos(t);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, H - pad.bottom);
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    ctx.fillText(`${hr.toString().padStart(2,'0')}:00`, x, H - pad.bottom + 14);
+  }
+
+  // Y axis labels
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#8b949e';
+  for (let h = minH; h <= maxH; h += 1) {
+    ctx.fillText(`${h.toFixed(1)}m`, pad.left - 6, yPos(h) + 4);
+  }
+
+  // Threshold line
+  if (threshold >= minH && threshold <= maxH) {
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yPos(threshold));
+    ctx.lineTo(W - pad.right, yPos(threshold));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#e74c3c';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${threshold.toFixed(1)}m threshold`, pad.left + 4, yPos(threshold) - 5);
+  }
+
+  // Tidal curve
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = xPos(p.t);
+    const y = yPos(p.h);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill water area
+  ctx.lineTo(xPos(points[points.length-1].t), yPos(minH));
+  ctx.lineTo(xPos(points[0].t), yPos(minH));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(26,82,118,0.3)';
+  ctx.fill();
+
+  // HW/LW markers
+  tidalEvents.forEach(e => {
+    const eDk = dateKey(e.time);
+    if (eDk !== day.date) return;
+    const x = xPos(e.time);
+    const y = yPos(e.height);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = e.type === 'HighWater' ? '#58a6ff' : '#8b949e';
+    ctx.fill();
+
+    ctx.fillStyle = e.type === 'HighWater' ? '#58a6ff' : '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    const label = `${e.height.toFixed(1)}m`;
+    ctx.fillText(label, x, y - 10);
+  });
+
+  // Observation markers
+  observations.forEach(obs => {
+    const dk = dateKey(obs.time);
+    if (dk !== day.date) return;
+    const x = xPos(obs.time);
+    const h = getHeightAt(obs.time);
+    if (h === null) return;
+    const y = yPos(h);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = obs.afloat === true ? '#3fb950' : obs.afloat === false ? '#f85149' : '#d29922';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Small label
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(obs.afloat === true ? 'A' : obs.afloat === false ? 'G' : '?', x, y + 3);
+  });
+
+  // Chart datum line at 0
+  if (minH <= 0 && maxH >= 0) {
+    ctx.strokeStyle = '#8b949e';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yPos(0));
+    ctx.lineTo(W - pad.right, yPos(0));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('CD', W - pad.right + 3, yPos(0) + 3);
+  }
+}
+
+function chartPrev() {
+  if (chartDayIndex > 0) {
+    chartDayIndex--;
+    renderChart();
+  }
+}
+
+function chartNext() {
+  if (chartDayIndex < interpolatedDays.length - 1) {
+    chartDayIndex++;
+    renderChart();
+  }
+}
+
+// ============================================================
+// ICS CALENDAR EXPORT
+// ============================================================
+function exportICS() {
+  const aw = computeAccessWindows();
+  if (aw.flat.length === 0) return;
+
+  const threshold = getThreshold();
+  const drying = parseFloat(el('dryingHeight').value).toFixed(2);
+  const draught = parseFloat(el('draught').value).toFixed(1);
+  const margin = parseFloat(el('margin').value).toFixed(1);
+
+  let ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//TidalAccess//Langstone Harbour//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Tidal Access — Langstone Harbour',
+    'X-WR-TIMEZONE:Europe/London'
+  ];
+
+  // One event per continuous access window (not split at midnight)
+  aw.flat.forEach(w => {
+    // Stable UID: anchor to the nearest HW event, rounded to the hour.
+    // This stays consistent across data sources that predict the same HW
+    // within ~30 min of each other.
+    const hwsInWindow = tidalEvents.filter(e =>
+      e.type === 'HighWater' &&
+      e.time >= new Date(w.start.getTime() - 3600000) &&
+      e.time <= new Date(w.end.getTime() + 3600000)
+    );
+
+    let uidAnchor;
+    if (hwsInWindow.length > 0) {
+      // Use the highest HW in/near this window, rounded to nearest hour
+      const bestHW = hwsInWindow.reduce((a, b) => a.height > b.height ? a : b);
+      const rounded = new Date(Math.round(bestHW.time.getTime() / 3600000) * 3600000);
+      uidAnchor = rounded.toISOString().replace(/[-:]/g, '').substring(0, 13) + '00Z';
+    } else {
+      // Fallback: midpoint of window, rounded to nearest hour
+      const mid = new Date((w.start.getTime() + w.end.getTime()) / 2);
+      const rounded = new Date(Math.round(mid.getTime() / 3600000) * 3600000);
+      uidAnchor = rounded.toISOString().replace(/[-:]/g, '').substring(0, 13) + '00Z';
+    }
+    const uid = `tidal-hw-${uidAnchor}@langstone`;
+
+    const durationMins = Math.round((w.end - w.start) / 60000);
+    // Round DOWN to nearest quarter-hour, display as decimal
+    const durationLabel = `${Math.floor(durationMins / 15) / 4}h`;
+
+    const hwInfo = hwsInWindow.map(e =>
+      `HW ${formatTime(e.time)} (${e.height.toFixed(1)}m)`
+    ).join(', ');
+
+    const description = [
+      `Access window: ${durationLabel}`,
+      `Threshold: ${threshold.toFixed(2)}m above CD`,
+      `  Drying: ${drying}m + Draught: ${draught}m + Margin: ${margin}m`,
+      hwInfo ? `Tidal events: ${hwInfo}` : '',
+      '',
+      'Predicted times only. Verify conditions before departure.'
+    ].filter(Boolean).join('\\n');
+
+    ics.push('BEGIN:VEVENT');
+    ics.push(`UID:${uid}`);
+    ics.push(`DTSTAMP:${icsDate(new Date())}`);
+    ics.push(`DTSTART:${icsDate(w.start)}`);
+    ics.push(`DTEND:${icsDate(w.end)}`);
+    ics.push(`SUMMARY:⚓ Tidal Access (${durationLabel})`);
+    ics.push(`DESCRIPTION:${description}`);
+    ics.push('LOCATION:Broom Channel\\, Langstone Harbour');
+    ics.push('STATUS:TENTATIVE');
+    ics.push('TRANSP:TRANSPARENT');
+    ics.push('END:VEVENT');
+  });
+
+  ics.push('END:VCALENDAR');
+
+  const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tidal-access-langstone.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function icsDate(d) {
+  // Format as YYYYMMDDTHHMMSSZ (UTC)
+  return d.getUTCFullYear().toString() +
+    (d.getUTCMonth()+1).toString().padStart(2,'0') +
+    d.getUTCDate().toString().padStart(2,'0') + 'T' +
+    d.getUTCHours().toString().padStart(2,'0') +
+    d.getUTCMinutes().toString().padStart(2,'0') +
+    d.getUTCSeconds().toString().padStart(2,'0') + 'Z';
+}
+
+// ============================================================
+// TAB MANAGEMENT
+// ============================================================
+function showTab(name) {
+  ['access', 'chart', 'events', 'observations'].forEach(t => {
+    el(`tab-${t}`).classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(name === 'access' ? 'access' : name === 'chart' ? 'curve' : name === 'events' ? 'event' : 'obs'));
+  });
+  if (name === 'chart') renderChart();
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function el(id) { return document.getElementById(id); }
+
+function getThreshold() {
+  const drying = parseFloat(el('dryingHeight').value) || 2.5;
+  const draught = parseFloat(el('draught').value) || 1.0;
+  const margin = parseFloat(el('margin').value) || 0.3;
+  return drying + draught + margin;
+}
+
+function showStatus(elId, msg, type) {
+  el(elId).innerHTML = `<div class="status status-${type}">${msg}</div>`;
+}
+
+function dateKey(d) {
+  const tzOffset = el('timezone').value === 'BST' ? 3600000 : 0;
+  const local = new Date(d.getTime() + tzOffset);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[local.getUTCDay()]} ${local.getUTCDate()} ${months[local.getUTCMonth()]} ${local.getUTCFullYear()}`;
+}
+
+function parseDateKey(dk) {
+  // Parse "Wed 16 Apr 2026" back to a Date at 00:00 (timezone-adjusted)
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const parts = dk.split(' ');
+  const day = parseInt(parts[1]);
+  const mon = months.indexOf(parts[2]);
+  const year = parts.length > 3 ? parseInt(parts[3]) : new Date().getUTCFullYear();
+
+  const tzOffset = el('timezone').value === 'BST' ? 3600000 : 0;
+  const d = new Date(Date.UTC(year, mon, day));
+  return new Date(d.getTime() - tzOffset);
+}
+
+function formatTime(d) {
+  const tzOffset = el('timezone').value === 'BST' ? 3600000 : 0;
+  const local = new Date(d.getTime() + tzOffset);
+  return `${local.getUTCHours().toString().padStart(2,'0')}:${local.getUTCMinutes().toString().padStart(2,'0')}`;
+}
+
+function formatDateLong(d) {
+  const tzOffset = el('timezone').value === 'BST' ? 3600000 : 0;
+  const local = new Date(d.getTime() + tzOffset);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${days[local.getUTCDay()]} ${local.getUTCDate()} ${months[local.getUTCMonth()]}`;
+}
+
+function formatDateShort(d) {
+  const tzOffset = el('timezone').value === 'BST' ? 3600000 : 0;
+  const local = new Date(d.getTime() + tzOffset);
+  return `${local.getUTCDate().toString().padStart(2,'0')}/${(local.getUTCMonth()+1).toString().padStart(2,'0')}`;
+}
+
+// ============================================================
+// FILE DROP HANDLING
+// ============================================================
+// Observation CSV drop zone
+const drop = document.getElementById('fileDrop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = ev => parseCSV(ev.target.result);
+    reader.readAsText(file);
+  }
+});
+
+// Tidal data JSON drop zone
+const tidalDrop = document.getElementById('tidalFileDrop');
+tidalDrop.addEventListener('dragover', e => { e.preventDefault(); tidalDrop.classList.add('drag-over'); });
+tidalDrop.addEventListener('dragleave', () => tidalDrop.classList.remove('drag-over'));
+tidalDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  tidalDrop.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        loadTidalJson(data);
+      } catch(err) {
+        showStatus('fetchStatus', `Invalid JSON: ${err.message}`, 'err');
+      }
+    };
+    reader.readAsText(file);
+  }
+});
+
+// Settings change handlers
+['draught', 'margin', 'dryingHeight', 'timezone', 'minWindow'].forEach(id => {
+  el(id).addEventListener('change', () => {
+    if (tidalEvents.length > 0) {
+      if (id === 'timezone') interpolateCurve();
+      renderAll();
+    }
+  });
+});
+
+// ============================================================
+// INIT
+// ============================================================
+loadSettings();
+</script>
+</body>
+</html>

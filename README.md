@@ -161,6 +161,14 @@ Observation times are recorded in BST (local time). The dashboard converts them 
 
 The calibration engine compares each observation's time against the interpolated tidal curve to estimate the drying height. The **Mooring Calibration** panel shows the current estimate, the bounding range from observations, and a confidence indicator.
 
+### Historic tidal data
+
+Calibration requires tidal data covering the dates of each observation. Since the UKHO API only provides 7 days ahead and the KHM page covers ~30 days, observations from earlier dates would normally have no tidal data to calibrate against.
+
+To solve this, the dashboard automatically fetches `historic_data.json` from the repository when observations are loaded. This file contains an accumulating record of tidal predictions for Langstone Harbour, updated daily. If an observation's timestamp falls outside the actively loaded tidal data (e.g. KHM or UKHO), the dashboard falls back to this historic record for the tidal height lookup.
+
+The status message after loading observations shows how many were matched against tidal data and how many fell outside the available range.
+
 Wind direction is captured because the boat swings on its mooring and may sit over different depths depending on whether wind or tide dominates the heading. The current calibration model does not factor in wind direction — all observations contribute equally regardless of wind. If sufficient data accumulates showing a consistent difference in effective depth by wind direction, a future refinement could account for this.
 
 ## Files
@@ -170,6 +178,7 @@ Wind direction is captured because the boat swings on its mooring and may sit ov
 | `index.html` | The dashboard (self-contained, no dependencies) |
 | `fetch_tides.py` | Python script for UKHO API and harmonic predictions |
 | `observation_log.xlsx` | Excel workbook for recording mooring observations |
+| `historic_data.json` | Accumulating record of Langstone tidal predictions (updated daily, used for observation calibration) |
 | `README.md` | This file |
 
 ## Limitations

@@ -347,7 +347,6 @@
   <div class="tabs" id="sourceTabs">
     <button class="tab active" onclick="showSourceTab('json')">UKHO / JSON File</button>
     <button class="tab" onclick="showSourceTab('khm')">Royal Navy KHM (30d)</button>
-    <button class="tab" onclick="showSourceTab('esc')">Emsworth SC (year)</button>
     <button class="tab" onclick="showSourceTab('manual')">Manual Entry</button>
   </div>
 
@@ -398,34 +397,6 @@
     <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center">
       <button onclick="parseKHM()">Load KHM Data</button>
       <span style="font-size:0.75rem;color:var(--text-dim)">Format: Date, Sunrise, HW₁ time, HW₁ ht, LW₁ time, LW₁ ht, HW₂ time, HW₂ ht, LW₂ time, LW₂ ht, Sunset, Range, Spring%</span>
-    </div>
-  </div>
-
-  <!-- Emsworth SC Calendar Source -->
-  <div id="src-esc" class="hidden">
-    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.5rem">
-      Upload the high tide calendar .ics file from
-      <a href="https://www.emsworthsc.org.uk/article/tides-on-your-calendar" target="_blank" style="color:var(--accent)">Emsworth Sailing Club</a>.
-      This provides HW times and heights for the full year. LW times and heights are estimated from the HW data.
-    </p>
-    <div class="grid-2" style="margin-bottom:0.5rem">
-      <div>
-        <div class="file-drop" id="escFileDrop" onclick="document.getElementById('escFile').click()" style="padding:1rem">
-          Drop .ics file here or click to upload
-          <input type="file" id="escFile" accept=".ics" style="display:none" onchange="handleESCFile(event)">
-        </div>
-      </div>
-      <div>
-        <label>Year</label>
-        <select id="escYear">
-          <option value="2025">2025</option>
-          <option value="2026" selected>2026</option>
-          <option value="2027">2027</option>
-        </select>
-        <p style="font-size:0.7rem;color:var(--text-dim);margin-top:0.5rem">
-          HW events are from the calendar. LW is estimated (±0.2m) from the empirical relationship between HW and LW heights at Langstone.
-        </p>
-      </div>
     </div>
   </div>
 
@@ -778,116 +749,16 @@ function parseManualEntry() {
 }
 
 // ============================================================
-// EMSWORTH SC CALENDAR PARSER
-// ============================================================
-function handleESCFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => parseESC(e.target.result);
-  reader.readAsText(file);
-}
-
-function parseESC(text) {
-  const year = parseInt(el('escYear').value) || 2026;
-  const yearStr = year.toString();
-
-  // Extract VEVENT blocks
-  const eventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
-  const hwEvents = [];
-  let match;
-
-  while ((match = eventRegex.exec(text)) !== null) {
-    const block = match[0];
-
-    // Extract DTSTART (UTC)
-    const dtMatch = block.match(/DTSTART:(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/);
-    if (!dtMatch) continue;
-    if (dtMatch[1] !== yearStr) continue; // Filter by year
-
-    // Extract SUMMARY (height)
-    const sumMatch = block.match(/SUMMARY:HT\s+([\d.]+)m/);
-    if (!sumMatch) continue;
-    const height = parseFloat(sumMatch[1]);
-    if (height <= 0) continue; // Skip spurious 0m entries
-
-    const dt = new Date(Date.UTC(
-      parseInt(dtMatch[1]), parseInt(dtMatch[2])-1, parseInt(dtMatch[3]),
-      parseInt(dtMatch[4]), parseInt(dtMatch[5]), parseInt(dtMatch[6])
-    ));
-
-    hwEvents.push({ time: dt, height });
-  }
-
-  if (hwEvents.length === 0) {
-    showStatus('fetchStatus', `No HW events found for ${year}. Check the file and year selection.`, 'err');
-    return;
-  }
-
-  // Sort chronologically
-  hwEvents.sort((a, b) => a.time - b.time);
-
-  // Generate LW events between consecutive HWs.
-  // LW time ≈ midpoint between HWs.
-  // LW height ≈ 5.52 - average(surrounding HW heights).
-  // Calibrated against EasyTide Langstone data (RMSE 0.16m).
-  const allEvents = [];
-
-  for (let i = 0; i < hwEvents.length; i++) {
-    // Add HW event
-    allEvents.push({
-      EventType: 'HighWater',
-      DateTime: hwEvents[i].time.toISOString(),
-      Height: hwEvents[i].height,
-      IsApproximateTime: false,
-      IsApproximateHeight: false,
-      Filtered: false
-    });
-
-    // Estimate LW between this HW and the next
-    if (i < hwEvents.length - 1) {
-      const t1 = hwEvents[i].time.getTime();
-      const t2 = hwEvents[i+1].time.getTime();
-      const gap = (t2 - t1) / 3600000; // hours
-
-      // Only insert LW if gap is reasonable (4-9 hours = normal HW-HW spacing)
-      if (gap > 4 && gap < 9) {
-        const lwTime = new Date((t1 + t2) / 2);
-        const avgHW = (hwEvents[i].height + hwEvents[i+1].height) / 2;
-        const lwHeight = Math.max(0.3, Math.round((5.52 - avgHW) * 10) / 10);
-
-        allEvents.push({
-          EventType: 'LowWater',
-          DateTime: lwTime.toISOString(),
-          Height: lwHeight,
-          IsApproximateTime: true,
-          IsApproximateHeight: true,
-          Filtered: false
-        });
-      }
-    }
-  }
-
-  processTidalEvents(allEvents);
-
-  const hwCount = allEvents.filter(e => e.EventType === 'HighWater').length;
-  const lwCount = allEvents.filter(e => e.EventType === 'LowWater').length;
-  showStatus('fetchStatus',
-    `Emsworth SC: Loaded ${hwCount} HW events for ${year}, with ${lwCount} estimated LW events.`, 'ok');
-}
-
-// ============================================================
 // SOURCE TAB SWITCHING
 // ============================================================
 function showSourceTab(name) {
-  ['json', 'khm', 'esc', 'manual'].forEach(t => {
+  ['json', 'khm', 'manual'].forEach(t => {
     const panel = document.getElementById(`src-${t}`);
     if (panel) panel.classList.toggle('hidden', t !== name);
   });
   document.querySelectorAll('#sourceTabs .tab').forEach(btn => {
     const isActive = (name === 'json' && btn.textContent.includes('JSON')) ||
                      (name === 'khm' && btn.textContent.includes('KHM')) ||
-                     (name === 'esc' && btn.textContent.includes('Emsworth')) ||
                      (name === 'manual' && btn.textContent.includes('Manual'));
     btn.classList.toggle('active', isActive);
   });
@@ -1782,23 +1653,6 @@ tidalDrop.addEventListener('drop', e => {
     reader.readAsText(file);
   }
 });
-
-// Emsworth SC ICS drop zone
-const escDrop = document.getElementById('escFileDrop');
-if (escDrop) {
-  escDrop.addEventListener('dragover', e => { e.preventDefault(); escDrop.classList.add('drag-over'); });
-  escDrop.addEventListener('dragleave', () => escDrop.classList.remove('drag-over'));
-  escDrop.addEventListener('drop', e => {
-    e.preventDefault();
-    escDrop.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = ev => parseESC(ev.target.result);
-      reader.readAsText(file);
-    }
-  });
-}
 
 // Settings change handlers
 ['draught', 'margin', 'dryingHeight', 'timezone', 'minWindow'].forEach(id => {

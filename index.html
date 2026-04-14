@@ -768,14 +768,21 @@ function showSourceTab(name) {
 // TIDAL EVENT PROCESSING
 // ============================================================
 function processTidalEvents(data) {
-  tidalEvents = data.map(e => ({
-    type: e.EventType,
-    time: new Date(e.DateTime),
-    height: e.Height,
-    isApproxTime: e.IsApproximateTime,
-    isApproxHeight: e.IsApproximateHeight,
-    filtered: e.Filtered
-  })).sort((a, b) => a.time - b.time);
+  tidalEvents = data.map(e => {
+    // Ensure DateTime is parsed as UTC — the UKHO API may omit the Z suffix
+    let dtStr = e.DateTime;
+    if (dtStr && !dtStr.endsWith('Z') && !dtStr.includes('+') && !dtStr.includes('-', 10)) {
+      dtStr += 'Z';
+    }
+    return {
+      type: e.EventType,
+      time: new Date(dtStr),
+      height: e.Height,
+      isApproxTime: e.IsApproximateTime,
+      isApproxHeight: e.IsApproximateHeight,
+      filtered: e.Filtered
+    };
+  }).sort((a, b) => a.time - b.time);
 
   interpolateCurve();
   renderAll();

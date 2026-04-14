@@ -178,7 +178,9 @@ def main():
         events=fetch_ukho(api_key,sid,dur);station=fetch_station_info(api_key,sid)
         output={"source":"ukho","fetchedAt":datetime.now(timezone.utc).isoformat(),
                 "stationId":sid,"stationName":station.get("Name","Unknown") if station else "Unknown",
-                "duration":dur,"events":events}
+                "duration":dur,
+                "applyLangstoneCorrection": sid != "0066",
+                "events":events}
     elif source=="harmonic":
         nd=int(args[0]) if args else 90
         if not 1<=nd<=366:print("Duration: 1-366",file=sys.stderr);sys.exit(1)
@@ -194,6 +196,7 @@ def main():
                 "duration":nd,"startDate":start.isoformat(),
                 "endDate":(start+timedelta(days=nd)).isoformat(),
                 "accuracy":"HW: +/-0.2m, +/-30min. LW heights less accurate.",
+                "applyLangstoneCorrection": True,
                 "events":events}
     else:print(f"Unknown source: {source}",file=sys.stderr);sys.exit(1)
     with open("tidal_data.json","w") as f:json.dump(output,f,indent=2)

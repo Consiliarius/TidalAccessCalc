@@ -589,6 +589,7 @@ function loadTidalJson(data) {
   let events;
   let stationName = '';
   let fetchedAt = '';
+  let applyCorrection = false;
 
   if (Array.isArray(data)) {
     events = data;
@@ -596,15 +597,33 @@ function loadTidalJson(data) {
     events = data.events;
     stationName = data.stationName || '';
     fetchedAt = data.fetchedAt || '';
+    applyCorrection = data.applyLangstoneCorrection === true;
   } else {
     showStatus('fetchStatus', 'Unrecognised JSON format. Expected an array of tidal events or a fetch_tides.py output file.', 'err');
     return;
+  }
+
+  // Apply Langstone secondary port corrections if the data is for Portsmouth.
+  // HW: +9 min on time, +0.24m on height. LW: unchanged.
+  if (applyCorrection) {
+    events = events.map(e => {
+      if (e.EventType === 'HighWater') {
+        const dt = new Date(e.DateTime.endsWith('Z') || e.DateTime.includes('+') ? e.DateTime : e.DateTime + 'Z');
+        const correctedDt = new Date(dt.getTime() + 9 * 60000);
+        return Object.assign({}, e, {
+          DateTime: correctedDt.toISOString(),
+          Height: Math.round((e.Height + 0.24) * 10) / 10
+        });
+      }
+      return e;
+    });
   }
 
   processTidalEvents(events);
 
   let msg = `Loaded ${events.length} tidal events`;
   if (stationName) msg += ` for ${stationName}`;
+  if (applyCorrection) msg += ' (Langstone corrections applied)';
   if (fetchedAt) {
     const d = new Date(fetchedAt);
     if (!isNaN(d.getTime())) msg += ` (fetched ${d.toLocaleDateString()})`;

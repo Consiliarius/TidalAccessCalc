@@ -304,12 +304,12 @@
 <body>
 
 <h1>⚓ Tidal Access — Langstone Harbour</h1>
-<p class="subtitle">Broom Channel mooring access predictor</p>
+<p class="subtitle">Broom Channel mooring access predictor · <a href="https://github.com/Consiliarius/TidalAccessCalc/blob/main/README.md" target="_blank" style="color:var(--text-dim)">Documentation</a> · <a href="https://github.com/Consiliarius/TidalAccessCalc/blob/main/fetch_tides.py" target="_blank" style="color:var(--text-dim)">fetch_tides.py</a></p>
 
 <!-- Settings Panel -->
 <div class="panel">
   <h2>Configuration</h2>
-  <div class="grid-4">
+  <div class="grid-4" style="align-items:end">
     <div>
       <label>Draught (m)</label>
       <input type="number" id="draught" value="1.0" step="0.1" min="0">
@@ -353,7 +353,9 @@
   <!-- JSON File Source -->
   <div id="src-json">
     <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.75rem">
-      Load from <code>fetch_tides.py</code>. Supports UKHO API (7 days) and harmonic predictions (year).
+      Load a JSON file produced by <a href="https://github.com/Consiliarius/TidalAccessCalc/blob/main/fetch_tides.py" target="_blank" style="color:var(--accent)">fetch_tides.py</a>:<br>
+      <code style="color:var(--accent)">python fetch_tides.py --source ukho YOUR_API_KEY</code> — 7 days from UKHO API<br>
+      <code style="color:var(--accent)">python fetch_tides.py --source harmonic 365</code> — up to a year (approximate)
     </p>
     <div style="display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
@@ -662,12 +664,21 @@ function parseKHM() {
 
       // Build UTC datetime
       const dt = new Date(Date.UTC(yr, month - 1, day, hr, mn, 0));
-      const utcDt = new Date(dt.getTime() - tzOffsetMs);
+      let utcDt = new Date(dt.getTime() - tzOffsetMs);
+      let adjustedHt = ht;
+
+      // Secondary port correction: KHM data is for Portsmouth.
+      // Langstone HW is ~9 min later and ~0.24m higher (from Admiralty data comparison).
+      // LW times and heights are effectively identical.
+      if (p.type === 'HighWater') {
+        utcDt = new Date(utcDt.getTime() + 9 * 60000);
+        adjustedHt = Math.round((ht + 0.24) * 10) / 10;
+      }
 
       events.push({
         EventType: p.type,
         DateTime: utcDt.toISOString(),
-        Height: ht,
+        Height: adjustedHt,
         IsApproximateTime: false,
         IsApproximateHeight: false,
         Filtered: false
@@ -682,7 +693,7 @@ function parseKHM() {
 
   processTidalEvents(events);
   const days = new Set(events.map(e => e.DateTime.substring(0, 10))).size;
-  let msg = `KHM: Loaded ${events.length} events over ${days} days`;
+  let msg = `KHM: Loaded ${events.length} events over ${days} days (Langstone corrections applied)`;
   if (parseErrors > 0) msg += ` (${parseErrors} lines skipped)`;
   showStatus('fetchStatus', msg + '.', 'ok');
 }
